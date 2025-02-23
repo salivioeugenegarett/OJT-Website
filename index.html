@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Assessor's Office Document Printer</title>
+  <style>
+    /* Base styling for screen */
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      overflow: hidden; /* Prevent scrolling overall */
+    }
+    /* Fixed Header */
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 60px;
+      background-color: maroon;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      box-sizing: border-box;
+      z-index: 1000;
+    }
+    header .logo {
+      height: 40px;
+    }
+    header .app-name {
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+    header .logout {
+      color: white;
+      text-decoration: none;
+      font-size: 1rem;
+    }
+    /* Container for main content below header */
+    .container {
+      display: flex;
+      height: calc(100vh - 60px); /* Full viewport height minus header */
+      margin-top: 60px;
+    }
+    /* Left side: compact input form - slightly reduced font-size and padding */
+    .form-section {
+      flex: 1;
+      padding: 5px;
+      border-right: 1px solid #ccc;
+      font-size: 12px;
+      overflow: hidden; /* No scrolling */
+    }
+    .form-section h2 {
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+    .form-group {
+      margin-bottom: 5px;
+    }
+    .form-group label {
+      font-weight: bold;
+      margin-right: 5px;
+    }
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group input[type="date"],
+    .form-group select {
+      width: calc(100% - 10px);
+      padding: 4px;
+      box-sizing: border-box;
+      margin-top: 2px;
+      margin-bottom: 2px;
+    }
+    .approver-buttons button {
+      margin-right: 3px;
+      margin-bottom: 3px;
+      padding: 3px 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    /* Approved By button selected style */
+    .approver-btn.selected {
+      background-color: maroon !important;
+      color: white !important;
+      border: none !important;
+    }
+    /* Document option container for aligned layout */
+    .document-option {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .document-option .doc-left {
+      display: flex;
+      align-items: center;
+    }
+    .document-option .doc-left input[type="checkbox"] {
+      margin-right: 5px;
+    }
+    .document-option .doc-right {
+      display: flex;
+      align-items: center;
+    }
+    .document-option .copies-label {
+      margin-right: 5px;
+      white-space: nowrap;
+    }
+    .document-option .doc-right input[type="number"] {
+      width: 50px;
+      padding: 3px;
+    }
+    /* Right side: preview area */
+    .preview-section {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto; /* Allow scrolling in preview */
+    }
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .preview-header h2 {
+      font-size: 1.3rem;
+      margin: 0;
+    }
+    .print-btn {
+      padding: 8px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .document {
+      background: #fff;
+      margin-bottom: 15px;
+    }
+    /* Containers for document copies */
+    #taxPreviewContainer,
+    #noImpPreviewContainer {
+      margin-bottom: 20px;
+    }
+    
+    /* PRINT STYLES */
+    @media print {
+      /* Hide header and input form in print */
+      header, .form-section {
+        display: none !important;
+      }
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        font-size: 16pt !important;
+      }
+      /* Hide non-print content */
+      body * {
+        visibility: hidden;
+      }
+      /* Make only the preview area visible */
+      #previewArea, #previewArea * {
+        visibility: visible;
+      }
+      #previewArea {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        min-height: 297mm;
+        margin: 0;
+        padding: 20mm 20mm 20mm 30mm;
+        box-sizing: border-box;
+      }
+      .document {
+        page-break-after: always;
+        margin: 0;
+        padding: 0;
+      }
+      .docTemplate {
+        padding: 10mm 10mm 10mm 0;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <!-- Replace logo.png with your actual logo image -->
+      <img src="logo.png" alt="Logo" class="logo">
+      <span class="app-name">Assessor's Office</span>
+    </div>
+    <div class="header-right">
+      <a href="#" class="logout">Logout</a>
+    </div>
+  </header>
+  <div class="container">
+    <!-- Left side: Input Form -->
+    <div class="form-section">
+      <h2>Input Details</h2>
+      <form id="docForm">
+        <div class="form-group">
+          <label for="pin">Property PIN</label>
+          <input type="text" id="pin" name="pin" required>
+        </div>
+        <div class="form-group">
+          <label for="orNumber">OR Number</label>
+          <input type="text" id="orNumber" name="orNumber" required>
+        </div>
+        <div class="form-group">
+          <label for="requester">Requester Name</label>
+          <input type="text" id="requester" name="requester" required>
+        </div>
+        <div class="form-group">
+          <label>Approved By</label>
+          <div class="approver-buttons">
+            <button type="button" class="approver-btn" data-name="John Doe">John Doe</button>
+            <button type="button" class="approver-btn" data-name="Jane Smith">Jane Smith</button>
+            <button type="button" class="approver-btn" data-name="Alice Johnson">Alice Johnson</button>
+          </div>
+          <input type="hidden" id="approver" name="approver">
+        </div>
+        <div class="form-group">
+          <label for="amount">Amount</label>
+          <input type="number" id="amount" name="amount" required>
+        </div>
+        <div class="form-group">
+          <label for="propertyType">Property Type</label>
+          <select id="propertyType" name="propertyType" required>
+            <option value="land">Land</option>
+            <option value="building">Building</option>
+            <option value="machinery">Machinery</option>
+          </select>
+        </div>
+        <!-- New Date field with calendar textbox -->
+        <div class="form-group">
+          <label for="date">Date</label>
+          <input type="date" id="date" name="date" required>
+        </div>
+        <!-- Document Options -->
+        <div class="form-group document-option">
+          <div class="doc-left">
+            <input type="checkbox" id="taxDeclaration" name="documents" value="taxDeclaration">
+            <label for="taxDeclaration">Tax Declaration</label>
+          </div>
+          <div class="doc-right">
+            <span class="copies-label">Copies:</span>
+            <input type="number" id="taxCopies" name="taxCopies" min="1" value="1">
+          </div>
+        </div>
+        <div class="form-group document-option">
+          <div class="doc-left">
+            <input type="checkbox" id="noImprovement" name="documents" value="noImprovement">
+            <label for="noImprovement">No Improvement Certificate</label>
+          </div>
+          <div class="doc-right">
+            <span class="copies-label">Copies:</span>
+            <input type="number" id="noImpCopies" name="noImpCopies" min="1" value="1">
+          </div>
+        </div>
+      </form>
+    </div>
+    
+    <!-- Right side: Preview Area -->
+    <div class="preview-section">
+      <div class="preview-header">
+        <h2>Document Preview</h2>
+        <button type="button" id="printBtn" class="print-btn" onclick="window.print()">Print</button>
+      </div>
+      <div id="previewArea">
+        <!-- Containers for document copies -->
+        <div id="taxPreviewContainer"></div>
+        <div id="noImpPreviewContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Helper function to get ordinal for a day
+    function getOrdinal(n) {
+      let s = ["th", "st", "nd", "rd"],
+          v = n % 100;
+      return n + (s[(v - 20) % 10] || s[v] || s[0]);
+    }
+
+    // Function to update a document template's fields
+    function updateTemplate(template) {
+      template.querySelector("#previewPin").innerText = document.getElementById('pin').value;
+      template.querySelector("#previewOr").innerText = document.getElementById('orNumber').value;
+      template.querySelector("#previewRequester").innerText = document.getElementById('requester').value;
+      template.querySelector("#previewApprover").innerText = document.getElementById('approver').value;
+      template.querySelector("#previewAmount").innerText = document.getElementById('amount').value;
+      const propertyType = document.getElementById('propertyType').value;
+      template.querySelector("#previewType").innerText =
+        propertyType.charAt(0).toUpperCase() + propertyType.slice(1);
+      const rawDate = document.getElementById('date').value;
+      let formattedDate = "";
+      if (rawDate) {
+        const dt = new Date(rawDate);
+        formattedDate = dt.toLocaleDateString("en-US", { month: 'long', day: 'numeric', year: 'numeric' });
+      }
+      template.querySelector("#previewDate").innerText = formattedDate;
+    }
+
+    // Function to update dynamic issued-on sentence for No Improvement Certificate
+    function updateIssuedSentence(template) {
+      const rawDate = document.getElementById('date').value;
+      let issuedDay = "", issuedMonth = "", issuedYear = "";
+      if (rawDate) {
+        const dt = new Date(rawDate);
+        issuedDay = getOrdinal(dt.getDate());
+        issuedMonth = dt.toLocaleString("en-US", { month: 'long' });
+        issuedYear = dt.getFullYear();
+      }
+      template.querySelector("#issuedDay").innerText = issuedDay;
+      template.querySelector("#issuedMonth").innerText = issuedMonth;
+      template.querySelector("#issuedYear").innerText = issuedYear;
+    }
+
+    // Function to update preview containers based on number of copies
+    function updatePreview() {
+      // Clear previous preview containers
+      const taxContainer = document.getElementById('taxPreviewContainer');
+      const noImpContainer = document.getElementById('noImpPreviewContainer');
+      taxContainer.innerHTML = "";
+      noImpContainer.innerHTML = "";
+      
+      // Update Tax Declaration Preview if checked
+      const taxChecked = document.getElementById('taxDeclaration').checked;
+      if (taxChecked) {
+        const taxCopies = parseInt(document.getElementById('taxCopies').value) || 1;
+        // Use the hidden template if it exists, else create one
+        let taxTemplate = document.getElementById('taxPreview');
+        if (!taxTemplate) {
+          taxTemplate = document.createElement('div');
+          taxTemplate.id = "taxPreview";
+          taxTemplate.className = "document docTemplate";
+          taxTemplate.style.display = "none";
+          taxTemplate.innerHTML = `
+            <h3 style="text-align:center;">TAX DECLARATION</h3>
+            <p><strong>Property PIN:</strong> <span id="previewPin"></span></p>
+            <p><strong>OR Number:</strong> <span id="previewOr"></span></p>
+            <p><strong>Requester:</strong> <span id="previewRequester"></span></p>
+            <p><strong>Approved By:</strong> <span id="previewApprover"></span></p>
+            <p><strong>Amount:</strong> <span id="previewAmount"></span></p>
+            <p><strong>Property Type:</strong> <span id="previewType"></span></p>
+            <p><strong>Date:</strong> <span id="previewDate"></span></p>
+            <div id="previewMachinery" style="display:none;">
+              <p><strong>Machinery Details:</strong></p>
+              <p>Model: XYZ-123</p>
+              <p>Year: 2020</p>
+              <p>Status: Operational</p>
+            </div>
+            <p style="text-align:right;">[Tax Declaration Footer]</p>
+          `;
+          document.body.appendChild(taxTemplate);
+        }
+        // Update template content
+        updateTemplate(taxTemplate);
+        // Clone template as many times as specified
+        for (let i = 0; i < taxCopies; i++) {
+          let clone = taxTemplate.cloneNode(true);
+          clone.style.display = "block";
+          taxContainer.appendChild(clone);
+        }
+      }
+      
+      // Update No Improvement Certificate Preview if checked
+      const noImpChecked = document.getElementById('noImprovement').checked;
+      if (noImpChecked) {
+        const noImpCopies = parseInt(document.getElementById('noImpCopies').value) || 1;
+        let noImpTemplate = document.getElementById('noImpPreview');
+        if (!noImpTemplate) {
+          noImpTemplate = document.createElement('div');
+          noImpTemplate.id = "noImpPreview";
+          noImpTemplate.className = "document docTemplate";
+          noImpTemplate.style.display = "none";
+          noImpTemplate.innerHTML = `
+            <h3 style="text-align:center;">CERTIFICATION OF NO IMPROVEMENT</h3>
+            <p style="text-align:center;">
+              Republic of the Philippines<br>
+              Province of [Your Province]<br>
+              Municipality of [Your Municipality]
+            </p>
+            <p>
+              This is to certify that the property identified as PIN <strong><span id="previewPin"></span></strong> with the official receipt number <strong><span id="previewOr"></span></strong> is declared under the name of <strong><span id="previewRequester"></span></strong> and that there is <em>no improvement</em> declared on said property as of the date of issuance of this certification.
+            </p>
+            <p id="issuedOnText">
+              Issued this <span id="issuedDay"></span> day of <span id="issuedMonth"></span>, <span id="issuedYear"></span> at [Location].
+            </p>
+            <hr>
+            <p><strong>Property PIN:</strong> <span id="previewPin"></span></p>
+            <p><strong>OR Number:</strong> <span id="previewOr"></span></p>
+            <p><strong>Requester:</strong> <span id="previewRequester"></span></p>
+            <p><strong>Approved By:</strong> <span id="previewApprover"></span></p>
+            <p><strong>Amount:</strong> <span id="previewAmount"></span></p>
+            <p><strong>Property Type:</strong> <span id="previewType"></span></p>
+            <p><strong>Date:</strong> <span id="previewDate"></span></p>
+            <div id="previewMachinery" style="display:none;">
+              <p><strong>Machinery Details:</strong></p>
+              <p>Model: XYZ-123</p>
+              <p>Year: 2020</p>
+              <p>Status: Operational</p>
+            </div>
+            <p style="text-align:right;">[No Improvement Footer]</p>
+          `;
+          document.body.appendChild(noImpTemplate);
+        }
+        // Update template content for no improvement
+        updateTemplate(noImpTemplate);
+        updateIssuedSentence(noImpTemplate);
+        for (let i = 0; i < noImpCopies; i++) {
+          let clone = noImpTemplate.cloneNode(true);
+          clone.style.display = "block";
+          noImpContainer.appendChild(clone);
+        }
+      }
+    }
+
+    // Set default date to today on page load
+    document.addEventListener("DOMContentLoaded", function() {
+      const today = new Date().toISOString().substring(0, 10);
+      document.getElementById("date").value = today;
+      updatePreview();
+    });
+
+    // Attach event listeners for live preview updates
+    document.getElementById('pin').addEventListener('input', updatePreview);
+    document.getElementById('orNumber').addEventListener('input', updatePreview);
+    document.getElementById('requester').addEventListener('input', updatePreview);
+    document.getElementById('amount').addEventListener('input', updatePreview);
+    document.getElementById('propertyType').addEventListener('change', updatePreview);
+    document.getElementById('date').addEventListener('input', updatePreview);
+    document.getElementById('taxDeclaration').addEventListener('change', updatePreview);
+    document.getElementById('noImprovement').addEventListener('change', updatePreview);
+    document.getElementById('taxCopies').addEventListener('input', updatePreview);
+    document.getElementById('noImpCopies').addEventListener('input', updatePreview);
+
+    // Approver button clicks update the approver field and highlight selected button
+    document.querySelectorAll('.approver-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        // Remove 'selected' class from all approver buttons
+        document.querySelectorAll('.approver-btn').forEach(b => b.classList.remove('selected'));
+        // Add 'selected' class to clicked button
+        this.classList.add('selected');
+        const name = this.getAttribute('data-name');
+        document.getElementById('approver').value = name;
+        updatePreview();
+      });
+    });
+  </script>
+</body>
+</html>
